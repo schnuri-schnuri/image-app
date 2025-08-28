@@ -1,19 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import {Jimp} from 'jimp';
+import { Jimp } from 'jimp';
 import { put } from "@vercel/blob";
 import { v4 as uuidv4 } from 'uuid';
-
-export async function OPTIONS() {
-    return new NextResponse(null, {
-        status: 204,
-        headers: {
-            'Allow': 'POST, OPTIONS',
-            'Access-Control-Allow-Methods': 'POST, OPTIONS',
-            'Access-Control-Allow-Headers': 'Content-Type',
-            'Access-Control-Allow-Origin': '*',
-        },
-    });
-}
 
 export async function POST(req: NextRequest) {
     const contentType = req.headers.get('content-type') || '';
