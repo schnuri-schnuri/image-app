@@ -17,7 +17,7 @@ export async function POST(req: NextRequest) {
         const imageBuffer = await req.arrayBuffer();
         const buffer = Buffer.from(imageBuffer);
         
-        const apiKey = process.env.PIXBAY_API_KEY;
+        const apiKey = process.env.PIXLAB_API_KEY;
         if (!apiKey) {
             console.error("No PIXBAY_API_KEY found");
             return NextResponse.json({ error: 'Error removing background' }, { status: 500 });
@@ -51,7 +51,7 @@ export async function POST(req: NextRequest) {
         
         if (!pixlabData.imgData) {
             console.error("No image data (link or imgData) in PixLab response");
-            return NextResponse.json({ error: 'Error removing background: no image data returned' }, { status: 500 });
+            return NextResponse.json({ error: 'Error removing background' }, { status: 500 });
         }
 
         console.log("Using base64 image data from PixLab API response");
