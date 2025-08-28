@@ -6,7 +6,7 @@ import { resolve } from 'path';
 export default defineConfig({
   plugins: [react()],
   test: {
-    environment: 'happy-dom',
+    environment: 'jsdom',
     globals: true,
     setupFiles: ['./tests/setup.ts'],
   },
