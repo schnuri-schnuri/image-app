@@ -17,59 +17,59 @@ export async function POST(req: NextRequest) {
         const imageBuffer = await req.arrayBuffer();
         const buffer = Buffer.from(imageBuffer);
         
-        const apiKey = process.env.PIXLAB_API_KEY;
+        const apiKey = process.env.WITHOUTBG_API_KEY;
         if (!apiKey) {
-            console.error("No PIXBAY_API_KEY found");
+            console.error("No WITHOUTBG_API_KEY found");
             return NextResponse.json({ error: 'Error removing background' }, { status: 500 });
         }
 
+        // Create form data for the API request
         const formData = new FormData();
-        formData.append('img', buffer, {
+        formData.append('file', buffer, {
             filename: 'image.jpg',
             contentType: contentType
         });
         
-        const pixlabResponse = await fetch('https://api.pixlab.io/bgremove', {
+        // Send request to WithoutBG API
+        const withoutBgResponse = await fetch('https://api.withoutbg.com/v1.0/image-without-background', {
             method: 'POST',
             body: formData,
             headers: {
-                'WWW-Authenticate': apiKey
+                'X-API-Key': apiKey
             }
         });
         
-        if (!pixlabResponse.ok) {
-            console.error("Error with PixLab API:", await pixlabResponse.text());
-            return NextResponse.json({ error: 'Error removing background' }, { status: 500 });
+        if (!withoutBgResponse.ok) {
+            let errorText = await withoutBgResponse.text();
+            console.error(`Error with WithoutBG API: Status ${withoutBgResponse.status}, Response: ${errorText}`);
+            try {
+                // Try to parse as JSON to get detailed error
+                const errorJson = JSON.parse(errorText);
+                console.error("Parsed error:", errorJson.error || "No error message");
+            } catch (e) {
+                // If not JSON, use raw text
+                console.error("Could not parse error as JSON");
+            }
+            return NextResponse.json({ 
+                error: 'Error removing background',
+                status: withoutBgResponse.status,
+                details: errorText
+            }, { status: 500 });
         }
 
-        // Process the response from PixLab
-        const pixlabData = await pixlabResponse.json();
-        
-        if (pixlabData.status !== 200) {
-            console.error("Error from PixLab API:", pixlabData.error || "Unknown error");
-            return NextResponse.json({ error: 'Error removing background' }, { status: 500 });
-        }
-        
-        
-        if (!pixlabData.imgData) {
-            console.error("No image data (link or imgData) in PixLab response");
-            return NextResponse.json({ error: 'Error removing background' }, { status: 500 });
-        }
+        // Get the image with transparent background
+        const bgRemovedBuffer = Buffer.from(await withoutBgResponse.arrayBuffer());
 
-        console.log("Using base64 image data from PixLab API response");
-        const bgRemovedBuffer = Buffer.from(pixlabData.imgData, 'base64');
-
-        
+        // Flip the image horizontally
         const image = await Jimp.read(bgRemovedBuffer);
         image.flip({horizontal: true, vertical: false});
         
-        // Verwende den Mime-Type aus der PixLab-Antwort, wenn verfügbar
-        const outputContentType = pixlabData.mimeType || contentType;
+        // WithoutBG API returns a PNG with transparent background
+        const outputContentType = 'image/png';
         const flippedImageBuffer = await image.getBuffer(outputContentType);
         
-        // Verwende die Dateiendung aus der PixLab-Antwort, wenn verfügbar
-        const fileExtension = pixlabData.extension || outputContentType.split('/')[1] || 'jpg';
-        const path = `${uuidv4()}.${fileExtension}`;
+        // Upload to Vercel Blob
+        const path = `${uuidv4()}.png`;
             
         const blob = await put(path, flippedImageBuffer, {
           access: 'public',
@@ -82,9 +82,8 @@ export async function POST(req: NextRequest) {
             originalSize: imageBuffer.byteLength,
             flippedSize: flippedImageBuffer.length,
             contentType: outputContentType,
-            fileExtension,
+            fileExtension: 'png',
             bgRemoved: true,
-            pixlabResponseType: pixlabData.link ? 'link' : 'base64',
             image: {
                 url: blob.url
             }
