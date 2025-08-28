@@ -5,6 +5,7 @@ import { v4 as uuidv4 } from 'uuid';
 
 export async function POST(req: NextRequest) {
     const contentType = req.headers.get('content-type') || '';
+    console.log("received POST request")
     if (!contentType.startsWith('image/')) {
         return NextResponse.json({ error: 'Not an image' }, { status: 400 });
     }

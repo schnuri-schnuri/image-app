@@ -30,7 +30,7 @@ export default function Home() {
       }
     } catch (error) {
       setUploadResult({ error: 'Error uploading image' });
-      console.error('Upload error:', error);
+      console.error('Upload error:', JSON.stringify(error));
     } finally {
       setIsUploading(false);
     }
