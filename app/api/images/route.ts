@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import sharp from 'sharp';
+import {Jimp} from 'jimp';
 import { put } from "@vercel/blob";
 import { v4 as uuidv4 } from 'uuid';
 
-// Fügen Sie eine OPTIONS-Methode hinzu, falls CORS-Probleme auftreten
 export async function OPTIONS() {
     return new NextResponse(null, {
         status: 204,
@@ -19,17 +18,17 @@ export async function OPTIONS() {
 export async function POST(req: NextRequest) {
     const contentType = req.headers.get('content-type') || '';
     console.log("received POST request")
-    if (!contentType.startsWith('image/')) {
+    if (contentType !== "image/jpeg" && contentType !== "image/png" ) {
         console.log("Not an image: ", contentType);
         return NextResponse.json({ error: 'Not an image' }, { status: 400 });
     }
 
     try {
-        // const imageBuffer = await req.arrayBuffer();
+        const imageBuffer = await req.arrayBuffer();
         
-        // const flippedImageBuffer = await sharp(Buffer.from(imageBuffer))
-        //     .flop() 
-        //     .toBuffer();
+        const image = await Jimp.read(Buffer.from(imageBuffer));
+        image.flip({horizontal: true, vertical: false});
+        const flippedImageBuffer = await image.getBuffer(contentType)
 
         const fileExtension = contentType.split('/')[1] || 'jpg';
         const path = `${uuidv4()}.${fileExtension}`;
@@ -42,8 +41,8 @@ export async function POST(req: NextRequest) {
         console.log("Image processed and uploaded successfully");
         return NextResponse.json({
             message: 'Received, flipped image horizontally and uploaded.',
-            // originalSize: imageBuffer.byteLength,
-            // flippedSize: flippedImageBuffer.length,
+            originalSize: imageBuffer.byteLength,
+            flippedSize: flippedImageBuffer.length,
             contentType,
             image: {
                 url: blob.url
