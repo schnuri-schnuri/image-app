@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import sharp from 'sharp';
-import { uploadImageToS3 } from '../../lib/s3';
+import { put } from "@vercel/blob";
+import { v4 as uuidv4 } from 'uuid';
 
 export async function POST(req: NextRequest) {
     const contentType = req.headers.get('content-type') || '';
@@ -13,29 +14,22 @@ export async function POST(req: NextRequest) {
     const flippedImageBuffer = await sharp(Buffer.from(imageBuffer))
         .flop() 
         .toBuffer();
-    
-    try {
-        // Upload the flipped image to S3
-        const s3Result = await uploadImageToS3(Buffer.from(flippedImageBuffer), contentType);
+
+    const fileExtension = contentType.split('/')[1] || 'jpg';
+    const path = `${uuidv4()}.${fileExtension}`;
         
-        return NextResponse.json({
+    const blob = await put(path, flippedImageBuffer, {
+      access: 'public',
+      addRandomSuffix: true,
+    });
+
+     return NextResponse.json({
             message: 'Received, flipped image horizontally and uploaded to S3.',
             originalSize: imageBuffer.byteLength,
             flippedSize: flippedImageBuffer.length,
             contentType,
-            s3: {
-                url: s3Result.url,
-                key: s3Result.key
+            image: {
+                url: blob.url
             }
         });
-    } catch (error) {
-        console.error('Error uploading to S3:', error);
-        return NextResponse.json({
-            message: 'Received and flipped image horizontally, but failed to upload to S3.',
-            error: (error instanceof Error) ? error.message : 'Unknown error',
-            originalSize: imageBuffer.byteLength,
-            flippedSize: flippedImageBuffer.length,
-            contentType,
-        }, { status: 500 });
-    }
 }
