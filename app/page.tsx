@@ -13,6 +13,7 @@ export default function Home() {
     setUploadResult(null);
     
     try {
+      console.log("Sending upload request with Content-Type:", image.type);
       const response = await fetch('/api/images', {
         method: 'POST',
         body: image,
@@ -21,16 +22,29 @@ export default function Home() {
         },
       });
       
-      const result = await response.json();
+      console.log("Response status:", response.status);
       
-      if (response.ok) {
-        setUploadResult({ message: `Upload successful: ${result.message}` });
-      } else {
-        setUploadResult({ error: result.error || 'Upload failed' });
+      if (!response.ok) {
+        console.error("Response error:", response.status, response.statusText);
+        const errorText = await response.text();
+        console.error("Error response body:", errorText);
+        
+        try {
+          const errorJson = JSON.parse(errorText);
+          setUploadResult({ error: errorJson.error || `Upload failed with status ${response.status}` });
+        } catch (e) {
+          setUploadResult({ error: `Upload failed with status ${response.status}: ${errorText || response.statusText}` });
+        }
+        return;
       }
+      
+      const result = await response.json();
+      console.log("Upload success:", result);
+      
+      setUploadResult({ message: `Upload successful: ${result.message}` });
     } catch (error) {
+      console.error('Upload error:', error);
       setUploadResult({ error: 'Error uploading image' });
-      console.error('Upload error:', JSON.stringify(error));
     } finally {
       setIsUploading(false);
     }
