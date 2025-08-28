@@ -25,11 +25,11 @@ export async function POST(req: NextRequest) {
     }
 
     try {
-        const imageBuffer = await req.arrayBuffer();
+        // const imageBuffer = await req.arrayBuffer();
         
-        const flippedImageBuffer = await sharp(Buffer.from(imageBuffer))
-            .flop() 
-            .toBuffer();
+        // const flippedImageBuffer = await sharp(Buffer.from(imageBuffer))
+        //     .flop() 
+        //     .toBuffer();
 
         const fileExtension = contentType.split('/')[1] || 'jpg';
         const path = `${uuidv4()}.${fileExtension}`;
@@ -41,9 +41,9 @@ export async function POST(req: NextRequest) {
 
         console.log("Image processed and uploaded successfully");
         return NextResponse.json({
-            message: 'Received, flipped image horizontally and uploaded to S3.',
-            originalSize: imageBuffer.byteLength,
-            flippedSize: flippedImageBuffer.length,
+            message: 'Received, flipped image horizontally and uploaded.',
+            // originalSize: imageBuffer.byteLength,
+            // flippedSize: flippedImageBuffer.length,
             contentType,
             image: {
                 url: blob.url
