@@ -29,9 +29,12 @@ export async function POST(req: NextRequest) {
             contentType: contentType
         });
         
-        const pixlabResponse = await fetch(`https://api.pixlab.io/bgremove?key=${apiKey}`, {
+        const pixlabResponse = await fetch('https://api.pixlab.io/bgremove', {
             method: 'POST',
-            body: formData
+            body: formData,
+            headers: {
+                'WWW-Authenticate': apiKey
+            }
         });
         
         if (!pixlabResponse.ok) {
@@ -42,7 +45,6 @@ export async function POST(req: NextRequest) {
         // Process the response from PixLab
         const pixlabData = await pixlabResponse.json();
         
-        // Überprüfe den Status der Antwort
         if (pixlabData.status !== 200) {
             console.error("Error from PixLab API:", pixlabData.error || "Unknown error");
             return NextResponse.json({ error: 'Error removing background' }, { status: 500 });
