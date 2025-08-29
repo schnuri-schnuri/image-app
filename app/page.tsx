@@ -1,10 +1,12 @@
 "use client";
 import { useState } from 'react';
+import Link from 'next/link';
+import { encodeImageUrl } from './shared/utils';
 
 export default function Home() {
   const [image, setImage] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
-  const [uploadResult, setUploadResult] = useState<{message?: string, error?: string} | null>(null);
+  const [uploadResult, setUploadResult] = useState<{message?: string, error?: string, imageUrl?: string} | null>(null);
 
   const handleImageUpload = async () => {
     if (!image) return;
@@ -41,7 +43,13 @@ export default function Home() {
       const result = await response.json();
       console.log("Upload success:", result);
       
-      setUploadResult({ message: `Upload successful: ${result.message}` });
+      // Get the image URL from the response
+      const imageUrl = result.image?.url;
+      
+      setUploadResult({ 
+        message: `Upload successful: ${result.message}`,
+        imageUrl: imageUrl
+      });
     } catch (error) {
       console.error('Upload error:', error);
       setUploadResult({ error: 'Error uploading image' });
@@ -87,7 +95,17 @@ export default function Home() {
         )}
         
         {uploadResult?.message && (
-          <div className="p-3 bg-green-100 text-green-800 rounded">{uploadResult.message}</div>
+          <div className="p-3 bg-green-100 text-green-800 rounded">
+            <p>{uploadResult.message}</p>
+            {uploadResult.imageUrl && (
+              <Link 
+                href={`/${encodeImageUrl(uploadResult.imageUrl)}`}
+                className="mt-2 inline-block px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+              >
+                View Image
+              </Link>
+            )}
+          </div>
         )}
         
         {uploadResult?.error && (
