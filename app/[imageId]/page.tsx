@@ -1,5 +1,5 @@
 "use client";
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { decodeImageId } from '../shared/utils';
@@ -7,10 +7,33 @@ import { decodeImageId } from '../shared/utils';
 export default function ImagePage({ params }: { params: { imageId: string } }) {
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteResult, setDeleteResult] = useState<{message?: string, error?: string} | null>(null);
+  const [imageExists, setImageExists] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
 
-  // Decode the base64 URL
   const imageUrl = decodeImageId(params.imageId);
+  
+  // Check if image actually exists
+  useEffect(() => {
+    const checkImageExists = async () => {
+      try {
+        const response = await fetch(imageUrl, { method: 'HEAD' });
+        setImageExists(response.ok);
+      } catch (error) {
+        console.error("Error checking image:", error);
+        setImageExists(false);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    if (imageUrl) {
+      checkImageExists();
+    } else {
+      setIsLoading(false);
+      setImageExists(false);
+    }
+  }, [imageUrl]);
 
   const handleDeleteImage = async () => {
     if (!imageUrl) return;
@@ -36,11 +59,8 @@ export default function ImagePage({ params }: { params: { imageId: string } }) {
       
       const result = await response.json();
       setDeleteResult({ message: `${result.message}` });
-      
-      // Redirect to homepage after successful deletion
-      setTimeout(() => {
-        router.push('/');
-      }, 2000);
+      setImageExists(false);
+      router.push('/');
     } catch (error) {
       console.error('Delete error:', error);
       setDeleteResult({ error: 'Error deleting image' });
@@ -49,10 +69,28 @@ export default function ImagePage({ params }: { params: { imageId: string } }) {
     }
   };
 
-  if (!imageUrl) {
+  if (isLoading) {
     return (
       <div className="font-sans grid items-center justify-items-center min-h-screen p-8">
-        <div className="p-3 bg-red-100 text-red-800 rounded">Invalid image ID</div>
+        <div className="p-3 bg-blue-100 text-blue-800 rounded">Checking image...</div>
+      </div>
+    );
+  }
+
+  if (!imageUrl || !imageExists) {
+    return (
+      <div className="font-sans grid items-center justify-items-center min-h-screen p-8">
+        <div className="p-3 bg-red-100 text-red-800 rounded">
+          This image no longer exists or the URL is invalid.
+          <div className="mt-4 text-center">
+            <a 
+              href="/"
+              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+            >
+              Back to Home
+            </a>
+          </div>
+        </div>
       </div>
     );
   }
@@ -67,6 +105,7 @@ export default function ImagePage({ params }: { params: { imageId: string } }) {
             <Image 
               src={imageUrl}
               alt="Flipped image"
+              unoptimized
               fill
               style={{ objectFit: 'contain' }}
               priority

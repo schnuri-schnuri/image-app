@@ -4,11 +4,11 @@ import { decodeImageId } from '../../../shared/utils';
 
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { imageId: string } }
+  { params }: { params: Promise<{ imageId: string }> }
 ) {
   try {
     // Decode the base64 URL
-    const imageUrl = decodeImageId(params.imageId);
+    const imageUrl = decodeImageId((await params).imageId);
     
     if (!imageUrl) {
       return NextResponse.json({ error: 'Invalid image ID' }, { status: 400 });

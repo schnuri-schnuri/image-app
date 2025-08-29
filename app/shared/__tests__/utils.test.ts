@@ -9,7 +9,8 @@ describe('URL encoding and decoding utilities', () => {
       'https://cdn.vercel.blob.core.windows.net/images/12345-abcdef.png',
       'https://api.test.com/image?id=123&token=abc',
       'https://localhost:3000/static/images/test_image.jpg',
-      'https://subdomain.domain.com/path/to/image.png?version=1'
+      'https://subdomain.domain.com/path/to/image.png?version=1',
+      'https://9cthwswgtwmyyfos.public.blob.vercel-storage.com/e00bb4a9-0f74-47a6-8ea5-1c5682a1e5ff-FUnDWrHJAkjOUiYKpN2bOEANXljtCk.png'
     ];
     
     testUrls.forEach(url => {
@@ -28,25 +29,32 @@ describe('URL encoding and decoding utilities', () => {
   });
   
   it('should encode a decoded ID back to the original', () => {
-    // Test cases with different encoded URLs
-    const testEncodedUrls = [
-      encodeImageUrl('https://example.com/image1.png'),
-      encodeImageUrl('https://cdn.vercel.blob.core.windows.net/images/test.png'),
-      encodeImageUrl('https://api.test.com/image?id=123&token=abc')
+    // Test cases with different URLs to encode
+    const testUrls = [
+      'https://example.com/image1.png',
+      'https://cdn.vercel.blob.core.windows.net/images/test.png',
+      'https://api.test.com/image?id=123&token=abc',
+      'https://9cthwswgtwmyyfos.public.blob.vercel-storage.com/e00bb4a9-0f74-47a6-8ea5-1c5682a1e5ff-FUnDWrHJAkjOUiYKpN2bOEANXljtCk.png'
     ];
     
-    testEncodedUrls.forEach(encodedUrl => {
+    testUrls.forEach(url => {
+      // Encode the URL
+      const encoded = encodeImageUrl(url);
+      
       // Decode the encoded URL
-      const decoded = decodeImageId(encodedUrl);
+      const decoded = decodeImageId(encoded);
       
       // Should not be empty
       expect(decoded).not.toBe('');
       
-      // Encode the decoded URL
+      // Re-encode the decoded URL
       const reEncoded = encodeImageUrl(decoded);
       
       // The re-encoded URL should match the original encoded URL
-      expect(reEncoded).toBe(encodedUrl);
+      expect(reEncoded).toBe(encoded);
+      
+      // The decoded URL should match the original URL
+      expect(decoded).toBe(url);
     });
   });
   
@@ -64,5 +72,28 @@ describe('URL encoding and decoding utilities', () => {
     expect(decodeImageId(undefined)).toBe('');
     // @ts-expect-error Testing invalid input
     expect(encodeImageUrl(null)).toBe('');
+  });
+
+  it('should properly handle URL-encoded Base64 strings', () => {
+    // URL-encoded Base64 string example
+    const encodedUrl = 'aHR0cHM6Ly85Y3Rod3N3Z3R3bXl5Zm9zLnB1YmxpYy5ibG9iLnZlcmNlbC1zdG9yYWdlLmNvbS8wN2RlMjEwNi05NGNhLTQ1YWItYTc3OC02NDMwZjMyZjk4OGUtbG54eTdvSklqVkdwRmhCcGZiUW5xMktQRFM2VWttLnBuZw%3D%3D';
+    
+    // Decode the URL-encoded Base64 string
+    const decoded = decodeImageId(encodedUrl);
+    
+    // Should be a valid URL
+    expect(decoded).toContain('https://');
+    
+    // Re-encode the URL
+    const reEncoded = encodeImageUrl(decoded);
+    
+    // The re-encoded URL should contain URL-encoded characters
+    expect(reEncoded).toContain('%3D'); // URL-encoded '='
+    
+    // Decode again to verify the round-trip works
+    const reDecoded = decodeImageId(reEncoded);
+    
+    // The re-decoded URL should match the original decoded URL
+    expect(reDecoded).toBe(decoded);
   });
 });
