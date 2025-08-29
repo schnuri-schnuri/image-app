@@ -47,7 +47,7 @@ export default function Home() {
       const imageUrl = result.image?.url;
       
       setUploadResult({ 
-        message: `Upload successful: ${result.message}`,
+        message: `Background removal successful! The processed image can be viewed below.`,
         imageUrl: imageUrl
       });
     } catch (error) {
@@ -96,14 +96,20 @@ export default function Home() {
         
         {uploadResult?.message && (
           <div className="p-3 bg-green-100 text-green-800 rounded">
-            <p>{uploadResult.message}</p>
+            <p className="mb-2">{uploadResult.message}</p>
             {uploadResult.imageUrl && (
-              <Link 
-                href={`/${encodeImageUrl(uploadResult.imageUrl)}`}
-                className="mt-2 inline-block px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-              >
-                View Image
-              </Link>
+              <div className="flex flex-col gap-2">
+                <p className="text-sm">Click the link below to view the image with background removed and horizontally flipped:</p>
+                <Link 
+                  href={`/${encodeImageUrl(uploadResult.imageUrl)}`}
+                  className="mt-2 inline-block px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                >
+                  View Processed Image
+                </Link>
+                <p className="text-xs mt-1 text-gray-600">
+                  You can save or delete the image on the next page.
+                </p>
+              </div>
             )}
           </div>
         )}
