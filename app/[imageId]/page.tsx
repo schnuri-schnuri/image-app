@@ -13,11 +13,20 @@ export default function ImagePage({ params }: { params: { imageId: string } }) {
 
   const imageUrl = decodeImageId(params.imageId);
   
-  // Check if image actually exists
+  // Check if image actually exists, bypassing cache
   useEffect(() => {
     const checkImageExists = async () => {
       try {
-        const response = await fetch(imageUrl, { method: 'HEAD' });
+        // Add cache-busting parameter and no-cache headers to force fresh request
+        const urlWithCacheBuster = `${imageUrl}${imageUrl.includes('?') ? '&' : '?'}_nocache=${Date.now()}`;
+        const response = await fetch(urlWithCacheBuster, { 
+          method: 'HEAD',
+          headers: {
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0'
+          }
+        });
         setImageExists(response.ok);
       } catch (error) {
         console.error("Error checking image:", error);
