@@ -17,15 +17,10 @@ export default function ImagePage({ params }: { params: { imageId: string } }) {
   useEffect(() => {
     const checkImageExists = async () => {
       try {
-        // Add cache-busting parameter and no-cache headers to force fresh request
+        // Add only cache-busting parameter without custom headers to avoid CORS issues
         const urlWithCacheBuster = `${imageUrl}${imageUrl.includes('?') ? '&' : '?'}_nocache=${Date.now()}`;
         const response = await fetch(urlWithCacheBuster, { 
-          method: 'HEAD',
-          headers: {
-            'Cache-Control': 'no-cache, no-store, must-revalidate',
-            'Pragma': 'no-cache',
-            'Expires': '0'
-          }
+          method: 'HEAD'
         });
         setImageExists(response.ok);
       } catch (error) {
@@ -112,7 +107,7 @@ export default function ImagePage({ params }: { params: { imageId: string } }) {
         <div className="w-full max-w-lg space-y-6">
           <div className="relative w-full h-[400px] border rounded overflow-hidden">
             <Image 
-              src={imageUrl}
+              src={`${imageUrl}${imageUrl.includes('?') ? '&' : '?'}_nocache=${Date.now()}`}
               alt="Flipped image"
               unoptimized
               fill
