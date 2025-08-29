@@ -10,30 +10,29 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@vercel/blob": "^1.1.1",
-    "form-data": "^4.0.4",
-    "jimp": "^1.6.0",
+    "@vercel/blob": "1.1.1",
+    "form-data": "4.0.4",
+    "jimp": "1.6.0",
     "next": "15.5.2",
-    "node-fetch": "^2.7.0",
-    "postcss": "^8.5.6",
+    "node-fetch": "2.7.0",
+    "postcss": "8.5.6",
     "react": "19.1.0",
     "react-dom": "19.1.0",
-    "sharp": "^0.34.3",
-    "uuid": "^11.1.0"
+    "uuid": "11.1.0"
   },
   "devDependencies": {
-    "@tailwindcss/postcss": "^4",
-    "@testing-library/jest-dom": "^6.8.0",
-    "@testing-library/react": "^16.3.0",
-    "@testing-library/user-event": "^14.6.1",
-    "@types/node": "^20",
-    "@types/node-fetch": "^2.6.13",
-    "@types/react": "^19",
-    "@types/react-dom": "^19",
-    "@types/uuid": "^10.0.0",
-    "@vitejs/plugin-react": "^5.0.2",
-    "jsdom": "^26.1.0",
-    "typescript": "^5",
-    "vitest": "^3.2.4"
+    "@tailwindcss/postcss": "4",
+    "@testing-library/jest-dom": "6.8.0",
+    "@testing-library/react": "16.3.0",
+    "@testing-library/user-event": "14.6.1",
+    "@types/node": "20",
+    "@types/node-fetch": "2.6.13",
+    "@types/react": "19",
+    "@types/react-dom": "19",
+    "@types/uuid": "10.0.0",
+    "@vitejs/plugin-react": "5.0.2",
+    "jsdom": "26.1.0",
+    "typescript": "5",
+    "vitest": "3.2.4"
   }
 }
