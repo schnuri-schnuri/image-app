@@ -2,21 +2,51 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { NextRequest } from 'next/server';
 import { POST } from '../route';
 
-vi.mock('sharp', () => {
+// Simple mocks for all modules
+vi.mock('jimp', () => {
+  // Create a mock for the flip method
+  const flipMock = vi.fn().mockReturnThis();
+  const getBufferMock = vi.fn().mockResolvedValue(Buffer.alloc(120));
+  
+  // Mock image object
+  const mockImage = {
+    flip: flipMock,
+    getBuffer: getBufferMock
+  };
+  
   return {
-    default: vi.fn().mockImplementation(() => ({
-      flop: vi.fn().mockReturnThis(),
-      toBuffer: vi.fn().mockResolvedValue(Buffer.alloc(120))
-    }))
+    Jimp: {
+      read: vi.fn().mockResolvedValue(mockImage)
+    }
   };
 });
 
-vi.mock('../../../lib/s3', () => ({
-  uploadImageToS3: vi.fn().mockResolvedValue({
-    url: 'https://example-bucket.s3.eu-central-1.amazonaws.com/images/test-image.jpg',
-    key: 'images/test-image.jpg'
+// Mock Vercel Blob
+vi.mock('@vercel/blob', () => ({
+  put: vi.fn().mockResolvedValue({
+    url: 'https://example.blob.vercel-storage.com/test-image-abc123.png'
   })
 }));
+
+// Mock for node-fetch - simplified
+vi.mock('node-fetch', () => ({
+  default: vi.fn().mockImplementation(() => Promise.resolve({
+    ok: true,
+    status: 200,
+    arrayBuffer: vi.fn().mockResolvedValue(new ArrayBuffer(110)),
+    text: vi.fn().mockResolvedValue("API Error")
+  }))
+}));
+
+// Mock form-data - minimal
+vi.mock('form-data', () => ({
+  default: vi.fn().mockImplementation(() => ({
+    append: vi.fn()
+  }))
+}));
+
+// Mock environment variables
+vi.stubEnv('WITHOUTBG_API_KEY', 'test-api-key');
 
 describe('Images API Route', () => {
   beforeEach(() => {
@@ -52,29 +82,43 @@ describe('Images API Route', () => {
     });
 
     vi.spyOn(req, 'arrayBuffer').mockResolvedValue(imageBuffer);
-    const sharp = await import('sharp');
-    const mockSharp = sharp.default;
-    const { uploadImageToS3 } = await import('../../../lib/s3');
+    const { Jimp } = await import('jimp');
+    const { put } = await import('@vercel/blob');
+    const fetch = await import('node-fetch');
 
     // Act
     const response = await POST(req);
     const body = await response.json();
 
     // Assert
-    expect(mockSharp).toHaveBeenCalledWith(Buffer.from(imageBuffer));
-    expect(uploadImageToS3).toHaveBeenCalledWith(
+    expect(fetch.default).toHaveBeenCalledWith(
+      'https://api.withoutbg.com/v1.0/image-without-background',
+      expect.objectContaining({
+        method: 'POST',
+        headers: expect.objectContaining({
+          'X-API-Key': 'test-api-key'
+        })
+      })
+    );
+    expect(Jimp.read).toHaveBeenCalled();
+    expect(put).toHaveBeenCalledWith(
+      expect.stringContaining('.png'),
       expect.any(Buffer),
-      'image/jpeg'
+      {
+        access: 'public',
+        addRandomSuffix: true,
+      }
     );
     expect(response.status).toBe(200);
     expect(body).toEqual({
-      message: 'Received, flipped image horizontally and uploaded to S3.',
+      message: 'Received, removed background, flipped image horizontally and uploaded.',
       originalSize: 100,
       flippedSize: 120,
-      contentType: 'image/jpeg',
-      s3: {
-        url: 'https://example-bucket.s3.eu-central-1.amazonaws.com/images/test-image.jpg',
-        key: 'images/test-image.jpg'
+      contentType: 'image/png',
+      fileExtension: 'png',
+      bgRemoved: true,
+      image: {
+        url: 'https://example.blob.vercel-storage.com/test-image-abc123.png'
       }
     });
   });
@@ -106,34 +150,24 @@ describe('Images API Route', () => {
     });
 
     vi.spyOn(req, 'arrayBuffer').mockResolvedValue(originalImageBuffer);
-    const sharp = await import('sharp');
-    const mockSharp = sharp.default;
-    const { uploadImageToS3 } = await import('../../../lib/s3');
     
     // Act
-    const response = await POST(req);
-    const body = await response.json();
+    await POST(req);
 
     // Assert
-    expect(mockSharp).toHaveBeenCalledWith(Buffer.from(originalImageBuffer));
-    expect(uploadImageToS3).toHaveBeenCalledWith(
-      expect.any(Buffer),
-      'image/png'
-    );
-    expect(response.status).toBe(200);
-    expect(body).toEqual({
-      message: 'Received, flipped image horizontally and uploaded to S3.',
-      originalSize: 100,
-      flippedSize: 120,
-      contentType: 'image/png',
-      s3: {
-        url: 'https://example-bucket.s3.eu-central-1.amazonaws.com/images/test-image.jpg',
-        key: 'images/test-image.jpg'
-      }
-    });
+    const { Jimp } = await import('jimp');
+    const readSpy = vi.mocked(Jimp.read);
+    
+    // Check if read was called
+    expect(readSpy).toHaveBeenCalled();
+    
+    // Check if flip was called with the correct parameters
+    // We can access the mock image returned by read
+    const mockImage = await readSpy.mock.results[0].value;
+    expect(mockImage.flip).toHaveBeenCalledWith({horizontal: true, vertical: false});
   });
   
-  it('should handle S3 upload failures', async () => {
+  it('should handle Blob upload failures', async () => {
     // Arrange
     const imageBuffer = new ArrayBuffer(100);
     const req = new NextRequest('http://localhost:3000/api/images', {
@@ -145,8 +179,8 @@ describe('Images API Route', () => {
     });
 
     vi.spyOn(req, 'arrayBuffer').mockResolvedValue(imageBuffer);
-    const { uploadImageToS3 } = await import('../../../lib/s3');
-    vi.mocked(uploadImageToS3).mockRejectedValueOnce(new Error('S3 upload failed'));
+    const { put } = await import('@vercel/blob');
+    vi.mocked(put).mockRejectedValueOnce(new Error('Blob upload failed'));
 
     // Act
     const response = await POST(req);
@@ -155,11 +189,70 @@ describe('Images API Route', () => {
     // Assert
     expect(response.status).toBe(500);
     expect(body).toMatchObject({
-      message: 'Received and flipped image horizontally, but failed to upload to S3.',
-      error: 'S3 upload failed',
-      originalSize: 100,
-      flippedSize: 120,
-      contentType: 'image/jpeg',
+      error: 'Error processing image'
     });
+  });
+  
+  it('should handle WithoutBG API failures', async () => {
+    // Arrange
+    const imageBuffer = new ArrayBuffer(100);
+    const req = new NextRequest('http://localhost:3000/api/images', {
+      method: 'POST',
+      headers: {
+        'content-type': 'image/jpeg',
+      },
+      body: imageBuffer,
+    });
+
+    vi.spyOn(req, 'arrayBuffer').mockResolvedValue(imageBuffer);
+    
+    // Simplified mocking for error case
+    const fetch = await import('node-fetch');
+    vi.mocked(fetch.default).mockImplementationOnce(() => Promise.resolve({
+      ok: false,
+      status: 400,
+      text: vi.fn().mockResolvedValue('Bad request'),
+      arrayBuffer: vi.fn(),
+      json: vi.fn()
+    } as any)); // 'as any' avoids TypeScript errors
+
+    // Act
+    const response = await POST(req);
+    const body = await response.json();
+
+    // Assert
+    expect(response.status).toBe(500);
+    expect(body).toMatchObject({
+      error: 'Error removing background',
+      status: 400
+    });
+  });
+  
+  it('should handle missing API key', async () => {
+    // Arrange
+    vi.stubEnv('WITHOUTBG_API_KEY', '');
+    const imageBuffer = new ArrayBuffer(100);
+    const req = new NextRequest('http://localhost:3000/api/images', {
+      method: 'POST',
+      headers: {
+        'content-type': 'image/jpeg',
+      },
+      body: imageBuffer,
+    });
+
+    vi.spyOn(req, 'arrayBuffer').mockResolvedValue(imageBuffer);
+
+    // Act
+    const response = await POST(req);
+    const body = await response.json();
+
+    // Assert
+    expect(response.status).toBe(500);
+    expect(body).toEqual({
+      error: 'Error removing background'
+    });
+    
+    // Restore API key for other tests
+    vi.stubEnv('WITHOUTBG_API_KEY', 'test-api-key');
   });
 });

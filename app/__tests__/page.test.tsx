@@ -6,7 +6,13 @@ import Home from '../page';
 // Mock fetch API
 global.fetch = vi.fn();
 
-function createFetchResponse(data, ok = true) {
+interface FetchResponseData {
+  message?: string;
+  error?: string;
+  image?: { url: string };
+}
+
+function createFetchResponse(data: FetchResponseData, ok = true) {
   return {
     ok,
     json: () => Promise.resolve(data),
@@ -41,7 +47,10 @@ describe('Home Component', () => {
   it('should show success message after successful upload', async () => {
     // Mock successful fetch
     global.fetch = vi.fn().mockResolvedValueOnce(
-      createFetchResponse({ message: 'Received image.' })
+      createFetchResponse({ 
+        message: 'Received, removed background, flipped image horizontally and uploaded.',
+        image: { url: 'https://example.blob.vercel-storage.com/test-image-abc123.png' }
+      })
     );
     
     render(<Home />);
@@ -55,7 +64,7 @@ describe('Home Component', () => {
     
     // Assert
     await waitFor(() => {
-      expect(screen.getByText(/upload successful/i)).toBeInTheDocument();
+      expect(screen.getByText(/background removal successful/i)).toBeInTheDocument();
     });
     
     expect(global.fetch).toHaveBeenCalledWith('/api/images', {
@@ -70,7 +79,7 @@ describe('Home Component', () => {
   it('should show error message if upload fails', async () => {
     // Mock failed fetch
     global.fetch = vi.fn().mockResolvedValueOnce(
-      createFetchResponse({ error: 'Not an image' }, false)
+      createFetchResponse({ error: 'Error uploading image' }, false)
     );
     
     render(<Home />);
@@ -84,7 +93,7 @@ describe('Home Component', () => {
     
     // Assert
     await waitFor(() => {
-      expect(screen.getByText(/not an image/i)).toBeInTheDocument();
+      expect(screen.getByText(/error uploading image/i)).toBeInTheDocument();
     });
   });
 
@@ -112,7 +121,10 @@ describe('Home Component', () => {
     global.fetch = vi.fn().mockImplementationOnce(() => {
       return new Promise(resolve => {
         setTimeout(() => {
-          resolve(createFetchResponse({ message: 'Received image.' }));
+          resolve(createFetchResponse({ 
+            message: 'Received, removed background, flipped image horizontally and uploaded.',
+            image: { url: 'https://example.blob.vercel-storage.com/test-image-abc123.png' }
+          }));
         }, 100);
       });
     });
@@ -131,7 +143,7 @@ describe('Home Component', () => {
     expect(screen.getByRole('button')).toBeDisabled();
     
     await waitFor(() => {
-      expect(screen.getByText(/upload successful/i)).toBeInTheDocument();
+      expect(screen.getByText(/background removal successful/i)).toBeInTheDocument();
     });
   });
 });
